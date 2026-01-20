@@ -1,5 +1,15 @@
-import { Upload, Type, Square, Download, Trash2 } from "lucide-react";
+import {
+  Upload,
+  Type,
+  Square,
+  Download,
+  Trash2,
+  Speech,
+  Cloud,
+  Minus,
+} from "lucide-react";
 import { Button } from "../ui/button";
+import { Circle } from "react-konva";
 
 export interface ToolbarProps {
   onAddRect: () => void;
@@ -9,65 +19,120 @@ export interface ToolbarProps {
   onAddImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDelete: () => void;
   onExport: () => void;
+  onAddPanel: (layout: "single" | "grid-2x1" | "grid-1x2" | "grid-2x2") => void;
+  onAddSpeechBubble: (variant: "speech" | "thought") => void;
 }
+
 export const Toolbar = ({
   onAddRect,
-  onAddText,
   onAddEllipse,
+  onAddText,
   onAddLine,
   onAddImage,
   onDelete,
   onExport,
+  onAddPanel,
+  onAddSpeechBubble,
 }: ToolbarProps) => (
-  <div className="p-4 bg-white shadow flex flex-col gap-3">
-    <b>Design Studio</b>
-    <Button onClick={onAddRect}>
-      <Square size={16} /> Rect
+  <div className="p-4 bg-white shadow flex flex-col gap-3 overflow-y-auto max-h-screen">
+    <div className="font-semibold text-lg mb-1">Design Studio</div>
+
+    <Button variant="outline" onClick={onAddRect}>
+      <Square size={16} className="mr-2" /> Rectangle
     </Button>
-    <Button onClick={onAddEllipse}>Ellipse</Button>
-    <Button onClick={onAddLine}>Line</Button>
-    <Button onClick={onAddText}>
-      <Type size={16} /> Text
+    <Button variant="outline" onClick={onAddEllipse}>
+      <Circle size={16} className="mr-2" /> Ellipse
+    </Button>
+    <Button variant="outline" onClick={onAddLine}>
+      <Minus size={16} className="mr-2" /> Line
+    </Button>
+
+    {/* Text & Media */}
+    <Button variant="outline" onClick={onAddText}>
+      <Type size={16} className="mr-2" /> Text
     </Button>
     <label>
-      <Upload size={16} /> Image
-      <input hidden type="file" onChange={onAddImage} />
+      <Button variant="outline" asChild className="w-full justify-start">
+        <span>
+          <Upload size={16} className="mr-2" /> Image
+        </span>
+      </Button>
+      <input hidden type="file" accept="image/*" onChange={onAddImage} />
     </label>
-    <Button onClick={onDelete}>
-      <Trash2 size={16} /> Delete
-    </Button>
-    <Button onClick={onExport}>
-      <Download size={16} /> Export
-    </Button>
+
+    {/* Comic-specific tools */}
+    <div className="border-t pt-3 mt-2">
+      <div className="text-sm font-medium text-muted-foreground mb-2">
+        Comic Panels
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddPanel("single")}
+          className="h-9"
+        >
+          Single
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddPanel("grid-2x1")}
+          className="h-9"
+        >
+          2 horiz
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddPanel("grid-1x2")}
+          className="h-9"
+        >
+          2 vert
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddPanel("grid-2x2")}
+          className="h-9"
+        >
+          2×2
+        </Button>
+      </div>
+    </div>
+
+    <div className="border-t pt-3 mt-1">
+      <div className="text-sm font-medium text-muted-foreground mb-2">
+        Bubbles
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddSpeechBubble("speech")}
+          className="flex-1"
+        >
+          <Speech size={16} className="mr-1.5" /> Speech
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onAddSpeechBubble("thought")}
+          className="flex-1"
+        >
+          <Cloud size={16} className="mr-1.5" /> Thought
+        </Button>
+      </div>
+    </div>
+
+    {/* Actions */}
+    <div className="border-t pt-3 mt-2 flex flex-col gap-2">
+      <Button variant="destructive" size="sm" onClick={onDelete}>
+        <Trash2 size={16} className="mr-2" /> Delete
+      </Button>
+      <Button variant="default" onClick={onExport}>
+        <Download size={16} className="mr-2" /> Export PNG
+      </Button>
+    </div>
   </div>
 );
-
-// export const Toolbar: React.FC<ToolbarProps> = ({
-//   onAddRect,
-//   onAddText,
-//   onAddImage,
-//   onDelete,
-//   onExport,
-// }) => (
-//   <div className="p-4 bg-white shadow flex flex-col gap-3">
-//     <h1 className="text-base font-semibold">Design Studio</h1>
-//     <Button onClick={onAddRect} className="tool-btn">
-//       <Square size={16} /> Rectangle
-//     </Button>
-//     <Button onClick={onAddText} className="tool-btn">
-//       <Type size={16} /> Text
-//     </Button>
-
-//     <label className="tool-btn cursor-pointer">
-//       <Upload size={16} /> Image
-//       <input type="file" hidden onChange={onAddImage} />
-//     </label>
-
-//     <Button onClick={onDelete} className="tool-btn">
-//       <Trash2 size={16} /> Delete
-//     </Button>
-//     <Button onClick={onExport} className="tool-btn">
-//       <Download size={16} /> Export PNG
-//     </Button>
-//   </div>
-// );

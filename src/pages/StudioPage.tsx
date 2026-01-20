@@ -4,19 +4,84 @@ import { PagesTabs } from "@/components/Editor/PagesTabs";
 import { PropertiesPanel } from "@/components/Editor/PropertiesPanel";
 import { TextToolbar } from "@/components/Editor/TextToolbar";
 import { Toolbar } from "@/components/Editor/Toolbar";
-import type { CanvasElement, Page } from "@/types";
+
+import type { CanvasElement, Page, Panel, PanelLayout } from "@/types";
 import { uid } from "@/utils/generateId";
 import { useEffect, useRef, useState } from "react";
 
 export default function StudioPage() {
   const stageRef = useRef<any>(null);
 
-  const [pages, setPages] = useState<Page[]>([{ id: uid(), elements: [] }]);
+  const [pages, setPages] = useState<Page[]>([
+    { id: uid(), elements: [], panels: [] },
+  ]);
   const [activePage, setActivePage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const page = pages[activePage];
 
+  // ---------------- PANELS ----------------
+  const addPanel = (layout: PanelLayout) => {
+    let newPanels: Panel[] = [];
+
+    const canvasW = 900;
+    const canvasH = 600;
+    const margin = 20;
+    const gutter = 16;
+
+    if (layout === "single") {
+      newPanels = [
+        {
+          id: uid(),
+          x: margin,
+          y: margin,
+          width: canvasW - margin * 2,
+          height: canvasH - margin * 2,
+          borderWidth: 3,
+          borderColor: "#000",
+          elements: [],
+        },
+      ];
+    }
+
+    if (layout === "grid-2x1") {
+      const w = (canvasW - margin * 2 - gutter) / 2;
+
+      newPanels = [
+        {
+          id: uid(),
+          x: margin,
+          y: margin,
+          width: w,
+          height: canvasH - margin * 2,
+          borderWidth: 3,
+          borderColor: "#000",
+          elements: [],
+        },
+        {
+          id: uid(),
+          x: margin + w + gutter,
+          y: margin,
+          width: w,
+          height: canvasH - margin * 2,
+          borderWidth: 3,
+          borderColor: "#000",
+          elements: [],
+        },
+      ];
+    }
+
+    setPages((prev) => {
+      const copy = [...prev];
+      copy[activePage] = {
+        ...copy[activePage],
+        panels: [...(copy[activePage].panels || []), ...newPanels],
+      };
+      return copy;
+    });
+  };
+
+  // ---------------- ELEMENTS ----------------
   const updatePage = (elements: CanvasElement[]) => {
     const copy = [...pages];
     copy[activePage] = { ...page, elements };
@@ -36,6 +101,7 @@ export default function StudioPage() {
         fill: "#4f46e5",
       },
     ]);
+
   const addText = () =>
     updatePage([
       ...page.elements,
@@ -53,6 +119,7 @@ export default function StudioPage() {
   const addImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -82,11 +149,17 @@ export default function StudioPage() {
   const moveLayer = (dir: "up" | "down") => {
     const i = page.elements.findIndex((e) => e.id === selectedId);
     if (i < 0) return;
+
     const arr = [...page.elements];
     const t = dir === "up" ? i - 1 : i + 1;
     if (!arr[t]) return;
+
     [arr[i], arr[t]] = [arr[t], arr[i]];
     updatePage(arr);
+  };
+
+  const addSpeechBubble = (variant: "speech" | "thought") => {
+    console.log("Adding", variant, "bubble");
   };
 
   const selected = page.elements.find((e) => e.id === selectedId);
@@ -101,17 +174,20 @@ export default function StudioPage() {
   const exportPNG = () => {
     const uri = stageRef.current?.toDataURL({ pixelRatio: 2 });
     if (!uri) return;
+
     const a = document.createElement("a");
     a.download = `page-${activePage + 1}.png`;
     a.href = uri;
     a.click();
   };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         deleteSelected();
       }
     };
+
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [selectedId, page.elements]);
@@ -119,13 +195,15 @@ export default function StudioPage() {
   return (
     <div className="h-screen w-screen grid grid-cols-[260px_1fr_260px] bg-gray-100">
       <Toolbar
+        onAddRect={addRect}
         onAddEllipse={() => {}}
         onAddLine={() => {}}
-        onAddRect={addRect}
         onAddText={addText}
         onAddImage={addImage}
         onDelete={deleteSelected}
         onExport={exportPNG}
+        onAddPanel={addPanel}
+        onAddSpeechBubble={addSpeechBubble}
       />
 
       <div className="flex flex-col items-center justify-center gap-4">
@@ -133,8 +211,11 @@ export default function StudioPage() {
           pages={pages}
           active={activePage}
           onChange={setActivePage}
-          onAdd={() => setPages([...pages, { id: uid(), elements: [] }])}
+          onAdd={() =>
+            setPages([...pages, { id: uid(), elements: [], panels: [] }])
+          }
         />
+
         {selected?.type === "text" && (
           <TextToolbar text={selected} onUpdate={updateSelected} />
         )}
@@ -159,6 +240,7 @@ export default function StudioPage() {
           onSelect={setSelectedId}
           onMove={moveLayer}
         />
+
         <PropertiesPanel selected={selected} onUpdate={updateSelected} />
       </div>
     </div>
