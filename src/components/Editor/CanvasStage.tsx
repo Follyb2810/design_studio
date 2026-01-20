@@ -10,26 +10,48 @@ import {
   Circle,
   Line as KonvaLine,
   Path,
+  Transformer,
 } from "react-konva";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<any>;
   page: Page;
+  selectedId: string | null;
   onSelect: (id: string, panelId?: string) => void;
-  onUpdatePos: (id: string, x: number, y: number, panelId?: string) => void;
+  onElementChange: (id: string, patch: any, panelId?: string) => void;
   clearSelection: () => void;
 }
 
 export const CanvasStage: React.FC<CanvasStageProps> = ({
   stageRef,
   page,
+  selectedId,
   onSelect,
-  onUpdatePos,
+  onElementChange,
   clearSelection,
 }) => {
+  const trRef = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    if (selectedId && trRef.current && stageRef.current) {
+      const stage = stageRef.current.getStage();
+      // We use the id attribute on Konva nodes to find them
+      const selectedNode = stage.findOne("#" + selectedId);
+      if (selectedNode) {
+        trRef.current.nodes([selectedNode]);
+        trRef.current.getLayer().batchDraw();
+      } else {
+        trRef.current.nodes([]);
+      }
+    } else if (trRef.current) {
+      trRef.current.nodes([]);
+    }
+  }, [selectedId, page]);
+
   const renderElement = (el: CanvasElement, panelId?: string) => {
     const common = {
       key: el.id,
+      id: el.id, // Important for Transformer to find the node
       x: el.x,
       y: el.y,
       rotation: el.rotation,
@@ -41,7 +63,33 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       onClick: () => onSelect(el.id, panelId),
       onTap: () => onSelect(el.id, panelId),
       onDragEnd: (e: any) =>
-        onUpdatePos(el.id, e.target.x(), e.target.y(), panelId),
+        onElementChange(el.id, { x: e.target.x(), y: e.target.y() }, panelId),
+      onTransformEnd: (e: any) => {
+        const node = e.target;
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+
+        // Reset scale to 1 and update width/height to avoid compounding scale
+        node.scaleX(1);
+        node.scaleY(1);
+
+        const patch: any = {
+          x: node.x(),
+          y: node.y(),
+          rotation: node.rotation(),
+        };
+
+        if (el.type === "text" || el.type === "sfx") {
+          patch.fontSize = node.fontSize() * scaleX; // Text scales by font size
+        } else if (el.type === "ellipse") {
+          patch.radiusX = (node.radiusX() || 0) * scaleX;
+          patch.radiusY = (node.radiusY() || 0) * scaleY;
+        } else {
+          patch.width = Math.max(5, node.width() * scaleX);
+          patch.height = Math.max(5, node.height() * scaleY);
+        }
+        onElementChange(el.id, patch, panelId);
+      },
     };
 
     switch (el.type) {
@@ -177,14 +225,20 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
           {page.panels.map((panel) => (
             <Group
               key={panel.id}
+              id={panel.id}
               x={panel.x}
               y={panel.y}
               draggable={!panel.locked}
               onClick={() => onSelect(panel.id)}
               onTap={() => onSelect(panel.id)}
               onDragEnd={(e: any) =>
-                onUpdatePos(panel.id, e.target.x(), e.target.y())
+                onElementChange(panel.id, { x: e.target.x(), y: e.target.y() })
               }
+              // Clip content to panel bounds
+              clipX={0}
+              clipY={0}
+              clipWidth={panel.width}
+              clipHeight={panel.height}
             >
               <Rect
                 width={panel.width}
@@ -204,91 +258,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               {panel.elements.map((el) => renderElement(el, panel.id))}
             </Group>
           ))}
+          <Transformer ref={trRef} />
         </Layer>
       </Stage>
     </div>
   );
 };
-
-// import React from "react";
-// import type { CanvasElement } from "@/types";
-// import { Stage, Layer, Rect, Text, Image as KonvaImage } from "react-konva";
-
-// interface CanvasStageProps {
-//   stageRef: React.RefObject<any>;
-//   elements: CanvasElement[];
-//   onSelect: (id: string) => void;
-//   onUpdatePos: (id: string, x: number, y: number) => void;
-//   clearSelection: () => void;
-// }
-
-// export const CanvasStage: React.FC<CanvasStageProps> = ({
-//   stageRef,
-//   elements,
-//   onSelect,
-//   onUpdatePos,
-//   clearSelection,
-// }) => (
-//   <div className="bg-white rounded-2xl shadow-xl p-2">
-//     <Stage
-//       ref={stageRef}
-//       width={900}
-//       height={600}
-//       onMouseDown={(e) => e.target === e.target.getStage() && clearSelection()}
-//     >
-//       <Layer>
-//         {elements.map((el) => {
-//           const common = {
-//             key: el.id,
-//             x: el.x,
-//             y: el.y,
-//             draggable: true,
-//             onClick: () => onSelect(el.id),
-//             onTap: () => onSelect(el.id),
-//             onDragEnd: (e: any) =>
-//               onUpdatePos(el.id, e.target.x(), e.target.y()),
-//           };
-
-//           if (el.type === "rect") {
-//             return (
-//               <Rect
-//                 {...common}
-//                 width={(el as any).width}
-//                 height={(el as any).height}
-//                 fill={(el as any).fill}
-//               />
-//             );
-//           }
-
-//           if (el.type === "text") {
-//             const t = el as any;
-//             return (
-//               <Text
-//                 {...common}
-//                 text={t.text}
-//                 fontSize={t.fontSize}
-//                 fill={t.fill}
-//                 fontFamily={t.fontFamily}
-//                 fontStyle={t.fontStyle}
-//                 align={t.align}
-//               />
-//             );
-//           }
-
-//           if (el.type === "image") {
-//             const img = el as any;
-//             return (
-//               <KonvaImage
-//                 {...common}
-//                 image={img.image}
-//                 width={img.width}
-//                 height={img.height}
-//               />
-//             );
-//           }
-//           return null;
-//         })}
-//       </Layer>
-//     </Stage>
-//   </div>
-// );

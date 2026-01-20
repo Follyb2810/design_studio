@@ -17,6 +17,7 @@ import { uid } from "@/utils/generateId";
 
 export default function StudioPage() {
   const stageRef = useRef<any>(null);
+  const stageRef = useRef<any>(null); // Ideally Konva.Stage, but keeping any to avoid import errors if Konva is not installed
 
   const [pages, setPages] = useState<Page[]>([
     { id: uid(), elements: [], panels: [] },
@@ -135,13 +136,17 @@ export default function StudioPage() {
     setPages(copy);
   };
 
-  const addElement = (newEl: CanvasElement) => {
+  const addElement = (newEl: CanvasElement, targetPanelId?: string) => {
     updatePage((p) => {
-      if (selectedPanelId) {
+      // If a specific panel is targeted (e.g. drop), use that.
+      // Otherwise fall back to selectedPanelId
+      const pid = targetPanelId ?? selectedPanelId;
+
+      if (pid) {
         return {
           ...p,
           panels: p.panels.map((panel) =>
-            panel.id === selectedPanelId
+            panel.id === pid
               ? { ...panel, elements: [...panel.elements, newEl] }
               : panel,
           ),
@@ -195,26 +200,35 @@ export default function StudioPage() {
       fill: "#111",
     });
 
-  const addImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processImageFile = (file: File, x?: number, y?: number) => {
+    if (!file.type.startsWith("image/")) return;
 
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.src = reader.result as string;
       img.onload = () =>
-        addElement({
-          id: uid(),
-          type: "image",
-          x: 150,
-          y: 150,
-          image: img,
-          width: img.width / 3,
-          height: img.height / 3,
-        });
+        addElement(
+          {
+            id: uid(),
+            type: "image",
+            x: x ?? 150,
+            y: y ?? 150,
+            image: img,
+            width: img.width / 3,
+            height: img.height / 3,
+          },
+          // If we dropped it, we might want to detect if it was dropped on a panel
+          // For now, we just add it to the active context or loose
+          undefined,
+        );
     };
     reader.readAsDataURL(file);
+  };
+
+  const addImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
   };
 
   const addSpeechBubble = (variant: "speech" | "thought") => {
@@ -343,6 +357,7 @@ export default function StudioPage() {
   const isPanelSelected = selectedInfo?.isPanel ?? false;
 
   const updateSelected = (patch: Record<string, any>) => {
+  const updateSelected = (patch: Partial<CanvasElement> | Partial<Panel>) => {
     if (!selectedId || !selectedInfo) return;
 
     updatePage((currentPage) => {
@@ -390,6 +405,16 @@ export default function StudioPage() {
     a.click();
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      // Adjust coordinates to be relative to the canvas if possible
+      // For now using client coordinates with an offset for the sidebar
+      processImageFile(file, e.clientX - 280, e.clientY - 60);
+    }
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
@@ -402,7 +427,11 @@ export default function StudioPage() {
   }, [selectedId, page]);
 
   return (
-    <div className="h-screen w-screen grid grid-cols-[260px_1fr_260px] bg-gray-100">
+    <div
+      className="h-screen w-screen grid grid-cols-[260px_1fr_260px] bg-gray-100"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
       <Toolbar
         onAddRect={addRect}
         onAddEllipse={addEllipse}
@@ -435,11 +464,12 @@ export default function StudioPage() {
         <CanvasStage
           stageRef={stageRef}
           page={page}
+          selectedId={selectedId}
           onSelect={(id, panelId) => {
             setSelectedId(id);
             setSelectedPanelId(panelId || null);
           }}
-          onUpdatePos={(id, x, y, panelId) =>
+          onElementChange={(id, patch, panelId) =>
             updatePage((p) => {
               if (panelId) {
                 return {
@@ -449,7 +479,7 @@ export default function StudioPage() {
                       ? {
                           ...panel,
                           elements: panel.elements.map((e) =>
-                            e.id === id ? { ...e, x, y } : e,
+                            e.id === id ? { ...e, ...patch } : e,
                           ),
                         }
                       : panel,
@@ -463,7 +493,7 @@ export default function StudioPage() {
                 return {
                   ...p,
                   elements: p.elements.map((e) =>
-                    e.id === id ? { ...e, x, y } : e,
+                    e.id === id ? { ...e, ...patch } : e,
                   ),
                 };
               }
@@ -471,7 +501,7 @@ export default function StudioPage() {
               return {
                 ...p,
                 panels: p.panels.map((panel) =>
-                  panel.id === id ? { ...panel, x, y } : panel,
+                  panel.id === id ? { ...panel, ...patch } : panel,
                 ),
               };
             })
