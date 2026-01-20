@@ -119,6 +119,8 @@ export default function StudioPage() {
   return (
     <div className="h-screen w-screen grid grid-cols-[260px_1fr_260px] bg-gray-100">
       <Toolbar
+        onAddEllipse={() => {}}
+        onAddLine={() => {}}
         onAddRect={addRect}
         onAddText={addText}
         onAddImage={addImage}

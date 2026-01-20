@@ -88,6 +88,59 @@ export const TextToolbar: React.FC<Props> = ({ text, onUpdate }) => {
         onChange={(e) => onUpdate({ fill: e.target.value })}
         className="w-10 p-1"
       />
+      <div className="flex gap-1">
+        <input
+          value={text.fontFamily || "Arial"}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+        />
+        <input
+          type="number"
+          value={text.fontSize}
+          onChange={(e) => onUpdate({ fontSize: +e.target.value })}
+        />
+        <Button
+          onClick={() =>
+            onUpdate({
+              fontStyle: text.fontStyle === "bold" ? "normal" : "bold",
+            })
+          }
+        >
+          <Bold size={14} />
+        </Button>
+        <Button
+          onClick={() =>
+            onUpdate({
+              fontStyle: text.fontStyle === "italic" ? "normal" : "italic",
+            })
+          }
+        >
+          <Italic size={14} />
+        </Button>
+        <Button
+          onClick={() =>
+            onUpdate({
+              textDecoration:
+                text.textDecoration === "underline" ? "none" : "underline",
+            })
+          }
+        >
+          <Underline size={14} />
+        </Button>
+        <Button onClick={() => onUpdate({ align: "left" })}>
+          <AlignLeft size={14} />
+        </Button>
+        <Button onClick={() => onUpdate({ align: "center" })}>
+          <AlignCenter size={14} />
+        </Button>
+        <Button onClick={() => onUpdate({ align: "right" })}>
+          <AlignRight size={14} />
+        </Button>
+        <input
+          type="color"
+          value={text.fill}
+          onChange={(e) => onUpdate({ fill: e.target.value })}
+        />
+      </div>
     </div>
   );
 };
