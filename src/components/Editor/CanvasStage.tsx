@@ -1,3 +1,4 @@
+import React from "react";
 import type { CanvasElement } from "@/types";
 import { Stage, Layer, Rect, Text, Image as KonvaImage } from "react-konva";
 
@@ -31,41 +32,48 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             y: el.y,
             draggable: true,
             onClick: () => onSelect(el.id),
+            onTap: () => onSelect(el.id),
             onDragEnd: (e: any) =>
               onUpdatePos(el.id, e.target.x(), e.target.y()),
           };
 
-          if (el.type === "rect")
+          if (el.type === "rect") {
             return (
               <Rect
                 {...common}
-                width={el.width}
-                height={el.height}
-                fill={el.fill}
+                width={(el as any).width}
+                height={(el as any).height}
+                fill={(el as any).fill}
               />
             );
-          if (el.type === "text")
+          }
+
+          if (el.type === "text") {
+            const t = el as any;
             return (
               <Text
                 {...common}
-                text={el.text}
-                fontSize={el.fontSize}
-                fill={el.fill}
-                fontFamily={el.fontFamily}
-                fontStyle={el.fontStyle}
-                textDecoration={el.textDecoration}
-                align={el.align}
+                text={t.text}
+                fontSize={t.fontSize}
+                fill={t.fill}
+                fontFamily={t.fontFamily}
+                fontStyle={t.fontStyle}
+                align={t.align}
               />
             );
-          if (el.type === "image")
+          }
+
+          if (el.type === "image") {
+            const img = el as any;
             return (
               <KonvaImage
                 {...common}
-                image={el.image}
-                width={el.width}
-                height={el.height}
+                image={img.image}
+                width={img.width}
+                height={img.height}
               />
             );
+          }
           return null;
         })}
       </Layer>

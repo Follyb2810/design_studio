@@ -1,3 +1,4 @@
+import React, { useEffect, useRef, useState } from "react";
 import { CanvasStage } from "@/components/Editor/CanvasStage";
 import { LayersPanel } from "@/components/Editor/LayersPanel";
 import { PagesTabs } from "@/components/Editor/PagesTabs";
@@ -7,7 +8,6 @@ import { Toolbar } from "@/components/Editor/Toolbar";
 
 import type { CanvasElement, Page, Panel, PanelLayout } from "@/types";
 import { uid } from "@/utils/generateId";
-import { useEffect, useRef, useState } from "react";
 
 export default function StudioPage() {
   const stageRef = useRef<any>(null);
@@ -33,6 +33,7 @@ export default function StudioPage() {
       newPanels = [
         {
           id: uid(),
+          type: "panel",
           x: margin,
           y: margin,
           width: canvasW - margin * 2,
@@ -50,6 +51,7 @@ export default function StudioPage() {
       newPanels = [
         {
           id: uid(),
+          type: "panel",
           x: margin,
           y: margin,
           width: w,
@@ -60,6 +62,7 @@ export default function StudioPage() {
         },
         {
           id: uid(),
+          type: "panel",
           x: margin + w + gutter,
           y: margin,
           width: w,
@@ -159,7 +162,23 @@ export default function StudioPage() {
   };
 
   const addSpeechBubble = (variant: "speech" | "thought") => {
-    console.log("Adding", variant, "bubble");
+    updatePage([
+      ...page.elements,
+      {
+        id: uid(),
+        type: "bubble",
+        x: 200,
+        y: 200,
+        width: 220,
+        height: 120,
+        text: variant === "speech" ? "..." : "•••",
+        fill: "#ffffff",
+        stroke: "#000",
+        strokeWidth: 2,
+        cornerRadius: 12,
+        tailDirection: "left",
+      } as any,
+    ]);
   };
 
   const selected = page.elements.find((e) => e.id === selectedId);
@@ -172,7 +191,7 @@ export default function StudioPage() {
     );
 
   const exportPNG = () => {
-    const uri = stageRef.current?.toDataURL({ pixelRatio: 2 });
+    const uri = stageRef.current?.toDataURL?.({ pixelRatio: 2 });
     if (!uri) return;
 
     const a = document.createElement("a");
@@ -223,7 +242,7 @@ export default function StudioPage() {
         <CanvasStage
           stageRef={stageRef}
           elements={page.elements}
-          onSelect={setSelectedId}
+          onSelect={(id) => setSelectedId(id)}
           onUpdatePos={(id, x, y) =>
             updatePage(
               page.elements.map((e) => (e.id === id ? { ...e, x, y } : e)),

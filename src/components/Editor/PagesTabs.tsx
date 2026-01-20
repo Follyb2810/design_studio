@@ -1,9 +1,10 @@
+import React from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import type { Page } from "@/types";
 
-interface PagesTabsProps {
+export interface PagesTabsProps {
   pages: Page[];
   active: number;
   onChange: (i: number) => void;
