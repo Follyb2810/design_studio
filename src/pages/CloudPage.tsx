@@ -34,20 +34,62 @@ import {
   Copy,
 } from "lucide-react";
 
+interface Layer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+}
+
+interface CanvasElementItem {
+  id: string;
+  layerId: string;
+  type: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  rotation?: number;
+  points?: number[];
+  radius?: number;
+  text?: string;
+  fontSize?: number;
+}
+
+interface AppState {
+  elements: CanvasElementItem[];
+  selectedIds: string[];
+  tool: string;
+  history: CanvasElementItem[][];
+  historyIndex: number;
+  zoom: number;
+  layers: Layer[];
+  activeLayer: string;
+  strokeColor: string;
+  fillColor: string;
+  strokeWidth: number;
+}
+
 // ============================================================================
 // STATE STORE using TanStack Store pattern (simplified for this implementation)
 // ============================================================================
-const createStore = (initialState) => {
+const createStore = <T,>(initialState: T) => {
   let state = initialState;
-  const listeners = new Set();
+  const listeners = new Set<(state: T) => void>();
 
   return {
     getState: () => state,
-    setState: (newState) => {
-      state = typeof newState === "function" ? newState(state) : newState;
+    setState: (newState: T | ((prev: T) => T)) => {
+      state =
+        typeof newState === "function"
+          ? (newState as (prev: T) => T)(state)
+          : newState;
       listeners.forEach((listener) => listener(state));
     },
-    subscribe: (listener) => {
+    subscribe: (listener: (state: T) => void) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
@@ -55,7 +97,7 @@ const createStore = (initialState) => {
 };
 
 // Main application store
-const store = createStore({
+const store = createStore<AppState>({
   elements: [],
   selectedIds: [],
   tool: "select",
@@ -75,7 +117,7 @@ const store = createStore({
 const generateId = () =>
   `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-const addToHistory = (elements) => {
+const addToHistory = (elements: CanvasElementItem[]) => {
   const state = store.getState();
   const newHistory = state.history.slice(0, state.historyIndex + 1);
   newHistory.push(JSON.parse(JSON.stringify(elements)));
@@ -89,9 +131,21 @@ const addToHistory = (elements) => {
 // ============================================================================
 // CANVAS ELEMENT COMPONENTS
 // ============================================================================
-const CanvasElement = ({ element, isSelected, onSelect, onChange }) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
+interface CanvasElementProps {
+  element: CanvasElementItem;
+  isSelected: boolean;
+  onSelect: () => void;
+  onChange: (element: CanvasElementItem) => void;
+}
+
+const CanvasElement = ({
+  element,
+  isSelected,
+  onSelect,
+  onChange,
+}: CanvasElementProps) => {
+  const shapeRef = useRef<any>(null);
+  const trRef = useRef<any>(null);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -105,7 +159,7 @@ const CanvasElement = ({ element, isSelected, onSelect, onChange }) => {
     onTap: onSelect,
     ref: shapeRef,
     draggable: isSelected,
-    onDragEnd: (e) => {
+    onDragEnd: (e: any) => {
       onChange({
         ...element,
         x: e.target.x(),
@@ -285,22 +339,30 @@ const CanvasElement = ({ element, isSelected, onSelect, onChange }) => {
 // ============================================================================
 // MAIN CANVAS COMPONENT
 // ============================================================================
-const DrawingCanvas = ({ width, height }) => {
+const DrawingCanvas = ({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) => {
   const [state, setState] = useState(store.getState());
-  const stageRef = useRef();
+  const stageRef = useRef<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentShape, setCurrentShape] = useState(null);
+  const [currentShape, setCurrentShape] = useState<CanvasElementItem | null>(
+    null,
+  );
 
   useEffect(() => {
     const unsubscribe = store.subscribe(setState);
     return unsubscribe;
   }, []);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: any) => {
     if (state.tool === "select") return;
 
     const pos = e.target.getStage().getPointerPosition();
-    const newElement = {
+    const newElement: CanvasElementItem = {
       id: generateId(),
       layerId: state.activeLayer,
       x: pos.x,
@@ -308,6 +370,7 @@ const DrawingCanvas = ({ width, height }) => {
       stroke: state.strokeColor,
       fill: state.fillColor,
       strokeWidth: state.strokeWidth,
+      type: "", // Will be set below
     };
 
     switch (state.tool) {
@@ -354,7 +417,7 @@ const DrawingCanvas = ({ width, height }) => {
     setIsDrawing(true);
   };
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: any) => {
     if (!isDrawing || !currentShape) return;
 
     const pos = e.target.getStage().getPointerPosition();
@@ -362,7 +425,7 @@ const DrawingCanvas = ({ width, height }) => {
 
     switch (currentShape.type) {
       case "line":
-        const newPoints = currentShape.points.concat([
+        const newPoints = (currentShape.points || []).concat([
           pos.x - currentShape.x,
           pos.y - currentShape.y,
         ]);
@@ -394,14 +457,14 @@ const DrawingCanvas = ({ width, height }) => {
     setCurrentShape(null);
   };
 
-  const handleSelect = (id) => {
+  const handleSelect = (id: string) => {
     store.setState({
       ...state,
       selectedIds: [id],
     });
   };
 
-  const handleChange = (updatedElement) => {
+  const handleChange = (updatedElement: CanvasElementItem) => {
     const newElements = state.elements.map((el) =>
       el.id === updatedElement.id ? updatedElement : el,
     );
@@ -409,7 +472,7 @@ const DrawingCanvas = ({ width, height }) => {
     addToHistory(newElements);
   };
 
-  const handleStageClick = (e) => {
+  const handleStageClick = (e: any) => {
     if (e.target === e.target.getStage()) {
       store.setState({ ...state, selectedIds: [] });
     }
@@ -493,7 +556,7 @@ const Toolbar = () => {
     { id: "panel", icon: Grid, label: "Panel Frame" },
   ];
 
-  const setTool = (tool) => {
+  const setTool = (tool: string) => {
     store.setState({ ...state, tool, selectedIds: [] });
   };
 
@@ -532,7 +595,7 @@ const PropertiesPanel = () => {
     state.selectedIds.includes(el.id),
   );
 
-  const updateColor = (type, value) => {
+  const updateColor = (type: "strokeColor" | "fillColor", value: string) => {
     store.setState({
       ...state,
       [type]: value,
@@ -629,7 +692,7 @@ const LayersPanel = () => {
     });
   };
 
-  const toggleLock = (layerId) => {
+  const toggleLock = (layerId: string) => {
     const newLayers = state.layers.map((layer) =>
       layer.id === layerId ? { ...layer, locked: !layer.locked } : layer,
     );

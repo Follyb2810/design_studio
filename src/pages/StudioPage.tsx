@@ -17,7 +17,6 @@ import { uid } from "@/utils/generateId";
 
 export default function StudioPage() {
   const stageRef = useRef<any>(null);
-  const stageRef = useRef<any>(null); // Ideally Konva.Stage, but keeping any to avoid import errors if Konva is not installed
 
   const [pages, setPages] = useState<Page[]>([
     { id: uid(), elements: [], panels: [] },
@@ -357,7 +356,6 @@ export default function StudioPage() {
   const isPanelSelected = selectedInfo?.isPanel ?? false;
 
   const updateSelected = (patch: Record<string, any>) => {
-  const updateSelected = (patch: Partial<CanvasElement> | Partial<Panel>) => {
     if (!selectedId || !selectedInfo) return;
 
     updatePage((currentPage) => {
